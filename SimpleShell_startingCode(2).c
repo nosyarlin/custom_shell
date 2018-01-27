@@ -182,7 +182,7 @@ int main(int argc, char **argv){//start main
 		// parse the input into tokens
 		command = parse_command(commandLine);
 
-		// add command to history if it is not "history" or "!!"
+		// add command to history if it is not "history" or "!!" or integer
 		if (strcmp(command[0], "history") != 0 && strcmp(command[0], "!!") != 0 && atoi(command[0]) == 0){
 			if (c_counter < 10){
 				history[c_counter] = malloc(MAX_INPUT);
