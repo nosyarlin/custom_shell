@@ -174,6 +174,11 @@ int main(int argc, char **argv){//start main
 	int status = 1;
 	history = (char **) malloc(10*sizeof(commandLine));
 	c_counter = 0;
+
+	// print shell details
+	printf("%s\n", "Custom Shell version 0.0.1");
+	printf("%s\n", "Copyright (C) 2018 Rayson Lim (1002026)");
+
 	//while loop to keep asking user for more inputs
 	do {
 		printf("csh>");
