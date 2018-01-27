@@ -11,6 +11,7 @@
 // defining global variables
 #define MAX_INPUT 8192
 #define DELIMITER " \t\n\a\r"
+static char *homedir;
 static char **history;
 static int c_counter;
 
@@ -19,14 +20,17 @@ char **parse_command(char *commandLine){
 	int position = 0;
 	char *c;
 	char **command = (char **) malloc(MAX_INPUT);
+	char temp[MAX_INPUT];
 
 	// parse the input into tokens
-	c = strtok(commandLine, DELIMITER);
+	strcpy(temp, commandLine);
+	c = strtok(temp, DELIMITER);
 	while (c != NULL){
 		command[position] = c;
 		position++;
 		c = strtok(NULL, DELIMITER);
 	}
+	// set last position as null
 	command[position] = NULL;
 	return command;
 }
@@ -57,6 +61,7 @@ int exec_non_builtin(char **args){
 }
 
 // List of built in commands
+// I use this to check if a command is a builtin
 char *builtin_str[] = {
   "cd",
   "exit",
@@ -71,28 +76,34 @@ int num_builtin(){
 
 // Allows changing of directory
 int csh_cd(char **arg){
-	// setting up homedir for later use
-	struct passwd *pw = getpwuid(getuid());
-	char *homedir = pw->pw_dir;
+	struct passwd *pw;
+	char *temp = malloc(MAX_INPUT);
 
+	// setting up homedir for later use
+	if (homedir == NULL){
+		pw = getpwuid(getuid());
+		homedir = pw->pw_dir;
+	}
+	strcpy(temp, homedir); // Copying homedir so that i won't accidentally modify it
 	if (arg[1] == NULL){
 		printf("csh:expected input after cd\n");
 	} else {
 		if (arg[1][0] == '~'){
 			arg[1]++; // removing the ~		
-			strcat(homedir, arg[1]); // adding home directory to path
-			arg[1] = homedir;
+			strcat(temp, arg[1]); // adding home directory to path
+			arg[1] = temp;
 		}
-		if (chdir(arg[1]) != 0){
+		if (chdir(arg[1]) != 0){	// if changing dir is unsuccessful
 			perror("csh");
 		}
 	}
+	free(temp);
 	return 1; 
 }
 
 // Allows you to exit the shell
 int csh_exit(char **arg){
-	return 0;
+	return 0; // return 0 basically just stops the program
 }
 
 // Allows you to view past 10 commands
@@ -107,8 +118,26 @@ int csh_history(char **arg){
 int csh_call_last(char **arg){
 	char **command;
 	int status;
-	command = parse_command(history[c_counter-1]);
+	command = parse_command(history[c_counter-1]); // grab the latest command in history and parse it
 	status = exec_command(command);
+	return status;
+}
+
+// Allows calling of a command from history list
+// arg[0] must be an int within range of 1 to c_counter
+int csh_call_listed_command(char **arg){
+	char **command;
+	int status;
+	int index;
+	index = atoi(arg[0]);
+	if (index > 0 && index <= c_counter){		
+		command = parse_command(history[c_counter-index]);
+		status = exec_command(command);
+	} else {	// if there is no command corresponding to index
+		printf("%s %d\n", "csh: index needs to be between 1 and", c_counter);
+		status = 1;
+	}
+	
 	return status;
 }
 
@@ -124,12 +153,12 @@ int (*builtin_func[]) (char **) = {
 // This is what you actually call to run a command
 int exec_command(char **command){
 	int status;
-	if (isdigit(command[0]) != 0){
-		/* code */
+	if (atoi(command[0]) != 0){
+		status = csh_call_listed_command(command);
 	} else {
 		for (int i = 0; i < num_builtin(); ++i){ 			// check if it is a builtin command
 			if (strcmp(command[0], builtin_str[i]) == 0){
-				status = (builtin_func[i])(command);
+				status = (builtin_func[i])(command);		// calls builtin command using function pointer
 				break;
 			} else if (i == num_builtin()-1){				// if not we use exec_non_builtin
 				status = exec_non_builtin(command);
@@ -143,7 +172,7 @@ int main(int argc, char **argv){//start main
 	char commandLine[MAX_INPUT];//to store users command
 	char **command;
 	int status = 1;
-	history = malloc(10*sizeof(commandLine));
+	history = (char **) malloc(10*sizeof(commandLine));
 	c_counter = 0;
 	//while loop to keep asking user for more inputs
 	do {
@@ -154,7 +183,7 @@ int main(int argc, char **argv){//start main
 		command = parse_command(commandLine);
 
 		// add command to history if it is not "history" or "!!"
-		if (strcmp(command[0], "history") != 0 && strcmp(command[0], "!!") != 0){
+		if (strcmp(command[0], "history") != 0 && strcmp(command[0], "!!") != 0 && atoi(command[0]) == 0){
 			if (c_counter < 10){
 				history[c_counter] = malloc(MAX_INPUT);
 				strcpy(history[c_counter], commandLine);
@@ -173,7 +202,9 @@ int main(int argc, char **argv){//start main
 	} while (status != 0);
 
 	// free mem
-	free(history);
+	for (int i = 0; i < c_counter; ++i){
+		free(history[i]);
+	}
 	free(command);
 }// end main
 
