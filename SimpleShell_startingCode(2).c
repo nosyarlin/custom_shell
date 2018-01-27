@@ -98,13 +98,13 @@ int num_builtin(){
 	return sizeof(builtin_str)/sizeof(char *);
 }
 
-void main(int argc, char **argv){//start main
+int main(int argc, char **argv){//start main
 	char commandLine[MAX_INPUT];//to store users command
 	char **command = (char **) malloc(MAX_INPUT);
 	char *c;
 	int status = 1;
 	int position;
-	history = malloc(10*MAX_INPUT);
+	history = malloc(10*sizeof(commandLine));
 	c_counter = 0;
 	//while loop to keep asking user for more inputs
 	do {
@@ -117,9 +117,10 @@ void main(int argc, char **argv){//start main
 			strcpy(history[c_counter], commandLine);
 			c_counter++;
 		} else {
-			history++;
+			free(history[0]); 	// freeing the memory that we don't need anymore
+			history++; 			// removing first entry from history
 			history[c_counter-1] = malloc(MAX_INPUT);
-			strcpy(history[c_counter-1], commandLine);
+			strcpy(history[c_counter-1], commandLine); // adding new entry
 		}
 
 		// parse the input into tokens
@@ -146,6 +147,9 @@ void main(int argc, char **argv){//start main
 //check if user enteres history option
 
 	} while (status != 0);
+	// free mem
+	free(history);
+	free(command);
 }// end main
 
 
